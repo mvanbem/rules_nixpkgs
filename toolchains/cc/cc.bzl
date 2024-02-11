@@ -206,7 +206,7 @@ def _nixpkgs_cc_toolchain_config_impl(repository_ctx):
                 ['"%s": "%s"' % (k, v) for (k, v) in info.tool_paths.items()],
             ),
             "%{cxx_builtin_include_directories}": get_starlark_list(info.cxx_builtin_include_directories),
-            "%{compile_flags}": get_starlark_list(info.compile_flags),
+            "%{compile_flags}": get_starlark_list(info.compile_flags + repository_ctx.attr.additional_compile_flags),
             "%{cxx_flags}": get_starlark_list(info.cxx_flags),
             "%{link_flags}": get_starlark_list(info.link_flags),
             "%{link_libs}": get_starlark_list(info.link_libs),
@@ -226,6 +226,7 @@ _nixpkgs_cc_toolchain_config = repository_rule(
         "cc_toolchain_info": attr.label(),
         "fail_not_supported": attr.bool(),
         "cross_cpu": attr.string(),
+        "additional_compile_flags": attr.string_list(),
         "_unix_cc_toolchain_config": attr.label(
             default = Label("@bazel_tools//tools/cpp:unix_cc_toolchain_config.bzl"),
         ),
@@ -308,7 +309,8 @@ def nixpkgs_cc_configure(
         target_constraints = None,
         register = True,
         cc_lang = "c++",
-        cross_cpu = ""):
+        cross_cpu = "",
+        additional_compile_flags = []):
     """Use a CC toolchain from Nixpkgs. No-op if not a nix-based platform.
 
     By default, Bazel auto-configures a CC toolchain from commands (e.g.
@@ -380,6 +382,7 @@ def nixpkgs_cc_configure(
       register: bool, enabled by default, Whether to register (with `register_toolchains`) the generated toolchain and install it as the default cc_toolchain.
       cc_lang: string, `"c++"` by default. Used to populate `CXX_FLAG` so the compiler is called in C++ mode. Can be set to `"none"` together with appropriate `copts` in the `cc_library` call: see above.
       cross_cpu: string, `""` by default. Used if you want to add a cross compilation C/C++ toolchain. Set this to the CPU architecture for the target CPU. For example x86_64, would be k8.
+      additional_compile_flags: list of string, Additional `compile_flags` for the toolchain.
     """
     nixopts = list(nixopts)
     nix_file_deps = list(nix_file_deps)
@@ -452,6 +455,7 @@ def nixpkgs_cc_configure(
         cc_toolchain_info = "@{}_info//:CC_TOOLCHAIN_INFO".format(name),
         fail_not_supported = fail_not_supported,
         cross_cpu = cross_cpu,
+        additional_compile_flags = additional_compile_flags,
     )
 
     # Generate the `cc_toolchain` workspace.
